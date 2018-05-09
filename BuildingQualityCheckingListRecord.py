@@ -1,5 +1,6 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, ConversationHandler
+from urllib.request import urlopen
 
 # TODO: Create parameters.txt containing the telegram bot token in the working directory
 # TODO: Download all Tableau form image print out and place in the working directory with the file name in the following format: [Team]_[Tower#]_[Floor##]_[Flat#].jpg (e.g. Internal_Tower1_Floor01_FlatA)
@@ -24,7 +25,7 @@ def genKeyboard(type, list):
 def getFormRecord(bot, update):
     # Step 1 of conversation, ask for TEAM
     global msg
-    msg = ""
+    msg = []
     keyboard = [
         [InlineKeyboardButton("Internal", callback_data="Internal"),
         InlineKeyboardButton("SPU", callback_data="SPU"),
@@ -43,21 +44,22 @@ def select_tower(bot, update):
     # Step 2 of conversation, ask for TOWER
     global msg
     query = update.callback_query
-    msg += query.data
-    keyboard = [
-        [InlineKeyboardButton("Tower1", callback_data="Tower1"),
-        InlineKeyboardButton("Tower2", callback_data="Tower2"),
-        InlineKeyboardButton("Tower3", callback_data="Tower3"),
-        InlineKeyboardButton("Tower5", callback_data="Tower5"),
-        InlineKeyboardButton("Tower6", callback_data="Tower6"),
-        InlineKeyboardButton("Tower7", callback_data="Tower7")]
-    ]
+    msg.append(query.data)
+##    keyboard = [
+##        [InlineKeyboardButton("1", callback_data="1"),
+##        InlineKeyboardButton("2", callback_data="2"),
+##        InlineKeyboardButton("3", callback_data="3"),
+##        InlineKeyboardButton("5", callback_data="5"),
+##        InlineKeyboardButton("6", callback_data="6"),
+##        InlineKeyboardButton("7", callback_data="7")]
+##    ]
+    keyboard = genKeyboard("", ["1", "2", "3", "5", "6", "7"])
 
     reply_markup = InlineKeyboardMarkup(keyboard)
     bot.edit_message_text(
         chat_id=query.message.chat_id,
         message_id=query.message.message_id,
-        text=msg + "...\n請選擇樓:")
+        text='_'.join(msg) + "...\n請選擇樓:")
     # update.message.reply_text(
     #     u"請選擇大樓:",
     #     reply_markup=reply_markup大
@@ -75,20 +77,26 @@ def select_floor(bot, update):
     # Step 3 of conversation, ask for FLOOR
     global msg
     query = update.callback_query
-    msg += "_" + query.data
-    # print(query.data)
-    # keyboard = [
-    #     InlineKeyboardButton("Floor01", callback_data="Floor01"),
-    #     InlineKeyboardButton("Floor02", callback_data="Floor02"),
-    #     InlineKeyboardButton("Floor03", callback_data="Floor03")
-    # ]
-    keyboard = genKeyboard("Floor", ["01", "02", "03", "05", "06", "07", "08", "09", "10", "11", "11duplex", "12", "12duplex", "15", "16", "17", "18", "19", "20"])
+    msg.append(query.data)
+    print(query.data)
+##    keyboard = [
+##        [InlineKeyboardButton("1", callback_data="1"),
+##        InlineKeyboardButton("2", callback_data="2"),
+##        InlineKeyboardButton("3", callback_data="3"),
+##        InlineKeyboardButton("5", callback_data="5"),
+##        InlineKeyboardButton("6", callback_data="6"),
+##        InlineKeyboardButton("7", callback_data="7"),
+##        InlineKeyboardButton("12", callback_data="12"),
+##        InlineKeyboardButton("19", callback_data="19")]
+##    ]
+    # keyboard = genKeyboard("Floor", ["01", "02", "03", "05", "06", "07", "08", "09", "10", "11", "11duplex", "12", "12duplex", "15", "16", "17", "18", "19", "20"])
+    keyboard = genKeyboard("", ["1", "2", "3", "5", "6", "7", "12", "19"])
 
     reply_markup = InlineKeyboardMarkup(keyboard)
     bot.edit_message_text(
         chat_id=query.message.chat_id,
         message_id=query.message.message_id,
-        text=msg + "...\n請選擇樓層:"
+        text='_'.join(msg) + "...\n請選擇樓層:"
     )
 
     bot.edit_message_reply_markup(
@@ -103,15 +111,24 @@ def select_flat(bot, update):
     #  Step 4 of conversation, ask for FLAT
     global msg
     query = update.callback_query
-    msg += "_" + query.data
+    msg.append(query.data)
     # print(msg)
-    keyboard = genKeyboard("Flat", ["A", "B", "C", "D", "E", "F", "G", "H", "J", "K", "L"])
+##    keyboard = [
+##        [InlineKeyboardButton("A", callback_data="A"),
+##        InlineKeyboardButton("B", callback_data="B"),
+##        InlineKeyboardButton("D", callback_data="D"),
+##        InlineKeyboardButton("F", callback_data="F"),
+##        InlineKeyboardButton("G", callback_data="G"),
+##        InlineKeyboardButton("J", callback_data="J"),
+##        InlineKeyboardButton("L", callback_data="L")]
+##    ]
+    keyboard = genKeyboard("", ["A", "B", "D", "F", "G", "J", "L"])
 
     reply_markup = InlineKeyboardMarkup(keyboard)
     bot.edit_message_text(
         chat_id=query.message.chat_id,
         message_id=query.message.message_id,
-        text= msg + u"... \n請選擇單位:"
+        text= '_'.join(msg) + u"... \n請選擇單位:"
     )
 
     bot.edit_message_reply_markup(
@@ -126,16 +143,21 @@ def final_input(bot, update):
     # Step 5 of conversation, return image
     global msg
     query = update.callback_query
-    msg += "_" + query.data
+    msg.append(query.data)
+    url = 'http://localhost:8100/Building/Form%20Review?vf_Team=' + msg[0] +'&vf_Tower=Tower%20' + msg[1] + '&vf_Floor=' + msg[2] +'/F&vf_Flat=' + msg[3]
+    data = urlopen(url)
 
     bot.edit_message_text(
         chat_id=query.message.chat_id,
         message_id=query.message.message_id,
-        text=msg
+        text='_'.join(msg)
     )
-    print(msg)
+    print('_'.join(msg))
+    print(url)
     try:
-        bot.send_photo(chat_id=query.message.chat_id, photo=open('{}.jpg'.format(msg), 'rb'))
+        for line in data:
+            bot.send_photo(chat_id=query.message.chat_id, photo=open(line.decode("utf-8"), 'rb'))
+            break
     except Exception:
         bot.send_message(chat_id=query.message.chat_id, text="Record not found!")
 
